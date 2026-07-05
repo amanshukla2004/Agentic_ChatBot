@@ -21,6 +21,29 @@ class DisplayResultStreamlit:
                         st.write(user_message)
                     with st.chat_message("assistant"):
                         st.write(value["messages"].content)
+        
+        elif usecase == "ChatBot with Web":
+            # prepare state and invoke the graph
+
+            initial_state = {"messages" : [user_message]}
+            res = graph.invoke(initial_state)
+            for message in res["messages"]:
+                if(type(message) == HumanMessage):
+                    with st.chat_message("user"):
+                        st.write(message.content)
+                
+                elif type(message) == ToolMessage:
+                    with st.chat_message("ai"):
+                        # in green color means should look different on screen
+                        st.write("Tool call start")
+                        st.write(message.content)
+                        st.write("tool call end")
+
+                elif type(message) == AIMessage and message.content:
+                    with st.chat_message("assistant"):
+                        # in green color means should look different on screen
+                        st.write(message.content)
+            
         else:
             st.error(f"Error: Invalid use case '{usecase}'.")
         
