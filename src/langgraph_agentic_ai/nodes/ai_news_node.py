@@ -31,10 +31,20 @@ class AINewsNode:
 
             Returns : dict -> Updated sate with 'news_data' key containing fetched news
         '''
-        frequency = state['messages'][0].content.lower() # what is this fetching ? --> user input is being fetched here and that input is being converted to lower case.
+        print("\n--- [NODE: AI News - Fetch] Executing ---")
+        user_input = state['messages'][-1].content.lower()
+        
+        import streamlit as st
+        # safely parse frequency from natural language, but override with UI selector if present
+        frequency = 'daily'
+        if 'week' in user_input: frequency = 'weekly'
+        elif 'month' in user_input: frequency = 'monthly'
+        elif 'year' in user_input: frequency = 'year'
+        
+        if "timeframe" in st.session_state:
+            frequency = st.session_state["timeframe"].lower()
+            
         self.state['frequency'] = frequency
-        time_range_map = {'daily' : 'day', 'weekly' : 'week','monthly': 'month', 'year' : 'year'}
-
         days_map = {'daily' : 1, 'weekly' : 7, 'year' : 366, 'monthly' : 30}
 
         
@@ -42,15 +52,18 @@ class AINewsNode:
         print(os.getenv("TAVILY_API_KEY"))
 
         try:
+            # Reverted query to AI news as requested
             response = self.tavily.search(
-                query="Top Artificial Intelligence (AI) technology news in India and globally",
+                query="latest artificial intelligence technology news",
                 topic='news',
                 days=days_map[frequency],
-                max_results=12
+                max_results=5
             )
         except Exception as e:
             print("TAVILY ERROR:", repr(e))
-            raise
+            state['news_data'] = [{'title': 'Tavily API Error', 'content': f'Tavily search failed or timed out: {str(e)}'}]
+            self.state['news_data'] = state['news_data']
+            return state
                     
 
         # news_content = "\n\n".join([f"Title: {article['title']}\nURL: {article['url']}\n" for article in response['results']])
@@ -62,64 +75,68 @@ class AINewsNode:
 
 
     def summarize_news(self, state: dict) -> dict:
-        """
-            Summarize the fetched news using an llm
-            ARGS:
-                state(dict) : the state dictionary containing 'news_data'
-            
-            RETURNS : dict -> Updated state with 'summary' key containing the summarized news
-        """
-        news_items = self.state['news_data']
-        # we can use the news items 
-
-        # Check if Tavily failed and returned our fake error article
-        if len(news_items) == 1 and "Tavily API Error" in news_items[0].get('content', ''):
-            state['summary'] = f"### Failed to Fetch News\n\n{news_items[0]['content']}\n\n*Please try again later. Tavily servers are currently unresponsive.*"
-            self.state['summary'] = state['summary']
-            return self.state
-
-        prompt_template = ChatPromptTemplate.from_messages(
-            [
-                (
-                    "system" , """You are a professional AI news summarization assistant. 
-                    Your task is to summarize the following AI news articles into a clear, day-by-day markdown report.
-                    
-                    Requirements:
-                    - Organize the summary chronologically by day (using headers like `### YYYY-MM-DD`).
-                    - Under each day, summarize the key developments, breakthroughs, and announcements.
-                    - You MUST include markdown links to the original resources for each point (e.g., [Source Name or Title](URL)).
-                    - Keep the summary concise but highly informative.
-                    - Maintain a professional and neutral tone.
-                    - If multiple articles share the same date, group their insights together logically.
-                    
-                    Format the final output beautifully using markdown so it renders perfectly on a web UI.
-                    """
-                ),
-                (
-                    "user" , "Articles:\n{articles}"
-                )
-            ]
-        )
-
-        articles_str = "\n\n".join(
-            [
-                 f"Title: {item.get('title', 'Unknown')}\n Content: {item.get('content', '')}\n URL: {item.get('url', '')}\n Date: {item.get('published_date', 'Unknown')}" for item in news_items
-            ]
-        )
-        
+        import traceback
         try:
+            print("\n--- [NODE: AI News - Summarize] Executing ---")
+            news_items = self.state.get('news_data') or []
+            frequency = self.state.get('frequency', 'daily')
+            
+            if not news_items:
+                state['summary'] = "### Failed to Fetch News\n\nNo articles were found or the search API returned empty results. Please try again later."
+                self.state['summary'] = state['summary']
+                return self.state
+
+            first_item_content = news_items[0].get('content') or ''
+            if len(news_items) == 1 and "Tavily API Error" in first_item_content:
+                state['summary'] = f"### Failed to Fetch News\n\n{first_item_content}\n\n*Please try again later. Tavily servers are currently unresponsive.*"
+                self.state['summary'] = state['summary']
+                return self.state
+
+            prompt_template = ChatPromptTemplate.from_messages(
+                [
+                    (
+                        "system" , f"""You are an elite AI technology journalist and summarization expert. 
+                        Your task is to synthesize the following AI news articles into a beautiful, highly readable markdown report for the {frequency} timeframe.
+                        
+                        Formatting Requirements:
+                        - ✨ **Executive Summary**: Start the entire report with a brief 2-sentence "TL;DR" of the most critical breakthroughs.
+                        - 📅 **Chronological Grouping**: Organize the summary chronologically by day using headers like `### YYYY-MM-DD`.
+                        - 🚀 **Impact Highlights**: For each day, use bullet points with relevant emojis (e.g., 🤖 for models, 💸 for funding, ⚖️ for regulations, 🔬 for research).
+                        - 🔗 **Citations**: You MUST inline markdown links to the original resources for EVERY news item (e.g., [Read full article on The Verge](URL)).
+                        
+                        Keep the summary concise, engaging, and professional. 
+                        DO NOT output raw URLs; always format them as clickable markdown text.
+                        """
+                    ),
+                    ("user" , "Articles:\n{articles}")
+                ]
+            )
+
+            articles_str = "\n\n".join(
+                [
+                     f"Title: {item.get('title') or 'Unknown'}\n Content: {item.get('content') or ''}\n URL: {item.get('url') or ''}\n Date: {item.get('published_date') or 'Unknown'}" for item in news_items
+                ]
+            )
+            
             response =  self.llm.invoke(
                 prompt_template.format(articles = articles_str)
             )
             state['summary'] = response.content
-        except Exception as e:
-            state['summary'] = f"Groq LLM Error: {str(e)}"
             
-        self.state['summary'] = state['summary'] # what is this? .
+        except Exception as e:
+            err = traceback.format_exc()
+            print("SUMMARIZE CRASHED:", err)
+            if "RateLimitError" in err or "429" in str(e):
+                state['summary'] = "### Rate Limit Reached\n\nGroq API token limit exceeded. Please wait a minute and try again, or switch to a smaller model in the sidebar."
+            else:
+                state['summary'] = f"### CRASH TRACEBACK:\n\n```\n{err}\n```"
+            
+        self.state['summary'] = state['summary']
         return self.state
 
     # can work on this method more
     def save_result(self, state):
+        print("\n--- [NODE: AI News - Save Result] Executing ---")
         import os
         frequency = self.state['frequency']
         summary = self.state['summary']
@@ -128,7 +145,7 @@ class AINewsNode:
         os.makedirs("./AINews", exist_ok=True)
         filename = f"./AINews/{frequency}_summary.md"
 
-        with open(filename, 'w') as f:
+        with open(filename, 'w', encoding='utf-8') as f:
             f.write(f"# {frequency.capitalize()} AI News Summary\n\n")
             f.write(summary)
 

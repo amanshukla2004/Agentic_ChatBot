@@ -9,3 +9,5 @@ faiss-cpu
 streamlit
 tavily-python
 python-dotenv
+wikipedia
+youtube-search

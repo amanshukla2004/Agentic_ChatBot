@@ -11,6 +11,7 @@ class BasicChatbotNode:
             Represents a node in the graph that handles basic chatbot functionality.
             This node is responsible for processing user messages and generating responses.
         """
+        print("\n--- [NODE: Basic Chatbot] Executing ---")
         return {"messages" : self.llm.invoke(state["messages"])}
         
         

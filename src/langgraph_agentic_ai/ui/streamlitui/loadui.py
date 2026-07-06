@@ -1,9 +1,7 @@
-
 import streamlit as st
 import os
 
 from src.langgraph_agentic_ai.ui.uiconfigfile import Config
-
 
 class LoadStreamlitUI:
     def __init__(self):
@@ -12,17 +10,63 @@ class LoadStreamlitUI:
     
     def load_streamlit_ui(self):
         st.set_page_config(page_title=" " + self.config.get_page_title(), layout="wide")
-        st.header("(●'◡'●)" + self.config.get_page_title())
-        if "timeframe" not in st.session_state:
-            st.session_state.timeframe = ''
-        if "IsFetchedButtonClicked" not in st.session_state:
-            st.session_state.IsFetchedButtonClicked = False
-
+        
+        # Inject custom CSS from design.md
+        st.markdown("""
+        <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono&display=swap');
+        
+        /* Global typography and colors */
+        html, body, [class*="css"] {
+            font-family: 'Inter', sans-serif;
+        }
+        code, pre {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        
+        /* Pill-style radio buttons for mode/timeframe selection */
+        div[role="radiogroup"] > label {
+            background: #1A1D27;
+            border-radius: 8px;
+            padding: 8px 14px;
+            margin-bottom: 4px;
+            transition: background 0.2s ease;
+            border: 1px solid #232733;
+        }
+        div[role="radiogroup"] > label:hover { 
+            background: #232733; 
+        }
+        
+        /* News Card Container */
+        .news-card {
+            background: #1A1D27;
+            border: 1px solid #232733;
+            border-radius: 12px;
+            padding: 24px;
+            color: #E5E7EB;
+            margin-top: 16px;
+        }
+        
+        /* Connected Status Badge (Top Right corner) */
+        .status-badge {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #34D399;
+            color: #0F1117;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            z-index: 1000;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        
+        # Removed API Connected badge and redundant header to clean up the UI
+        
         with st.sidebar:
-            # get options from config
-
             llm_options = self.config.get_llm_options()
-            usecase_options = self.config.get_usecase_options()
 
             # LLM selection
             self.user_controls["selected_llm"] = st.selectbox("LLM Provider" , options=llm_options)
@@ -31,41 +75,14 @@ class LoadStreamlitUI:
                 model_options = self.config.get_groq_model_options()
 
                 self.user_controls["selected_groq_model"] = st.selectbox("Groq Model" , options=model_options)
+                self.user_controls["GROQ_API_KEY"] = st.session_state["GROQ_API_KEY"] = st.text_input("Groq API Key", type="password")
 
-                self.user_controls["GROQ_API_KEY"] = st.session_state["GROQ_API_KEY"] = st.text_input("API Key", type="password")
-
-                # Validate API key
                 if not self.user_controls["GROQ_API_KEY"]:
-                    st.warning("Please enter your GROQ API key to proceed. Dont't have? refer : https://console.groq.com/keys")
+                    st.warning("Please enter your GROQ API key to proceed.")
                 
-            # usecase selection
+            os.environ["TAVILY_API_KEY"] = self.user_controls["TAVILY_API_KEY"] = st.session_state["TAVILY_API_KEY"] = st.text_input("TAVILY API Key (Required for Web/News)", type="password")
 
-            self.user_controls["selected_usecase"] = st.selectbox("Select Usecase" , options=usecase_options)
-
-            if self.user_controls["selected_usecase"] == "ChatBot with Web" or self.user_controls["selected_usecase"] == "AI News":
-                os.environ["TAVILY_API_KEY"] = self.user_controls["TAVILY_API_KEY"] = st.session_state["TAVILY_API_KEY"] = st.text_input("TAVILY API Key", type="password")
-
-                # Validate API key
-                if not self.user_controls["TAVILY_API_KEY"]:
-                    st.warning("Please enter your TAVILY API key to proceed. Dont't have? refer : https://tavily.com/dashboard")
-
-            if (self.user_controls['selected_usecase'] == 'AI News'):
-                st.subheader("AI News Explorer")
-                
-                with st.sidebar:
-                    time_frame = st.selectbox(
-                        "Select Time Frame",
-                        ["Daily", "Weekly", "Monthly"],
-                        index = 0
-                    )
-                if st.button("Fetch Latest AI News", use_container_width=True):
-                    st.session_state.IsFetchedButtonClicked = True
-                    st.session_state.timeframe = time_frame
+            if not self.user_controls["TAVILY_API_KEY"]:
+                st.warning("Please enter your TAVILY API key for full functionality.")
 
         return self.user_controls
-
-
-                
-        
-        
-        

@@ -5,6 +5,17 @@ from src.langgraph_agentic_ai.state.state import State
 from src.langgraph_agentic_ai.nodes.basic_chatbot_node import BasicChatbotNode
 from src.langgraph_agentic_ai.tools.chatbot_with_Tool_node import ChatbotWithToolNode
 from src.langgraph_agentic_ai.nodes.ai_news_node import AINewsNode
+from src.langgraph_agentic_ai.nodes.router_node import RouterNode
+
+def route_decision(state: State) -> str:
+    """Returns the next node based on the router's decision."""
+    route = state.get("route", "basic_chat")
+    if route == "web_search":
+        return "chatbot_with_tools"
+    elif route == "news_request":
+        return "fetch_news"
+    else:
+        return "basic_chatbot"
 
 class GraphBuilder:
 
@@ -12,97 +23,59 @@ class GraphBuilder:
         self.llm = model
         self.graph_builder = StateGraph(State)
     
-    def basic_chatbot_build_graph(self):
+    def setup_graph(self, usecase=None):
         """
-            Builds a basic chatbot using langgraph.
-            This method initializes a chatbot node using the `BasicChatbotNode` class and integrates it into the graph . the ChatBot node is et as both the entry and exit pointy of the graph
-            
+        Sets up the unified multi-agent graph. The usecase argument is kept for backwards compatibility but is no longer required.
         """
-        self.basic_chatbot = BasicChatbotNode(model=self.llm)
-          
-        self.graph_builder.add_node("chatbot", self.basic_chatbot.process)
-        self.graph_builder.add_edge(START, "chatbot")
-        self.graph_builder.add_edge("chatbot", END)
-
-    # --------------------------------------------------
-    def chatbot_with_tools_build_graph(self):
-        """
-            Builds a chatbot with tools using langgraph.
-            This method initializes a chatbot node using the `ChatbotWithToolsNode` class and integrates it into the graph . 
-            It defines tools, initializes the chatbot with tool capabilities, and sets up conditional and direct edges between nodes.
-            the ChatBot node is et as both the entry and exit pointy of the graph
-            
-        """
-        # define the tool and the tool node
-
+        # 1. Initialize Nodes
+        router_node = RouterNode(self.llm)
+        basic_chatbot = BasicChatbotNode(model=self.llm)
+        
         tools = get_tools()
         tool_node = create_tool_node(tools)
-
-        ## define the llm
-        llm = self.llm
-
-        ## define the chatbot node
-        obj_chatbot_with_node = ChatbotWithToolNode(llm)
+        obj_chatbot_with_node = ChatbotWithToolNode(self.llm)
         chatbot_node = obj_chatbot_with_node.create_chatbot(tools)
         
-        # add nodes
-          
-        self.graph_builder.add_node("chatbot", chatbot_node)
-        self.graph_builder.add_node("tools",tool_node)
+        ai_news_node = AINewsNode(self.llm)
 
-        # define conditional and direct edges
-
-
-        self.graph_builder.add_edge(START, "chatbot")
-        self.graph_builder.add_conditional_edges("chatbot", tools_condition)
-        self.graph_builder.add_edge("tools", "chatbot")
-        self.graph_builder.add_edge("tools",END)
+        # 2. Add Nodes to Graph
+        self.graph_builder.add_node("router", router_node.route)
+        self.graph_builder.add_node("basic_chatbot", basic_chatbot.process)
         
-    # -----------------------------------------------
-    def ai_news_builder_graph(self):
+        self.graph_builder.add_node("chatbot_with_tools", chatbot_node)
+        self.graph_builder.add_node("tools", tool_node)
         
-
-        ai_news_node = AINewsNode(self.llm) # we are creating obj of the class AINewsNode 
-
-        # create node
-        self.graph_builder.add_node("fetch_news" , ai_news_node.fetch_news)
+        self.graph_builder.add_node("fetch_news", ai_news_node.fetch_news)
         self.graph_builder.add_node("summarize_news", ai_news_node.summarize_news)
         self.graph_builder.add_node("save_results", ai_news_node.save_result)
 
-
-        # add edges
+        # 3. Add Edges and Routing
+        if usecase == "news":
+            self.graph_builder.set_entry_point("fetch_news")
+        else:
+            self.graph_builder.set_entry_point("router")
         
-        # self.graph_builder.add_edge(START, "fetch_news")
-        self.graph_builder.set_entry_point("fetch_news")
+        # Conditional edge from router
+        self.graph_builder.add_conditional_edges(
+            "router",
+            route_decision,
+            {
+                "basic_chatbot": "basic_chatbot",
+                "chatbot_with_tools": "chatbot_with_tools",
+                "fetch_news": "fetch_news"
+            }
+        )
 
+        # Basic Chatbot flow
+        self.graph_builder.add_edge("basic_chatbot", END)
+        
+        # Chatbot with Tools (Web Search) flow
+        self.graph_builder.add_conditional_edges("chatbot_with_tools", tools_condition)
+        self.graph_builder.add_edge("tools", "chatbot_with_tools")
+        
+        # AI News flow
         self.graph_builder.add_edge("fetch_news", "summarize_news")
         self.graph_builder.add_edge("summarize_news", "save_results")
         self.graph_builder.add_edge("save_results", END)
 
-        
-
-
-
-
-
-
-
-    
-    def setup_graph(self, usecase):
-        """
-            sets up the graph fro the selected use case
-        """
-        if usecase == "Basic ChatBot":
-            self.basic_chatbot_build_graph()
-
-        if usecase == "ChatBot with Web":
-            self.chatbot_with_tools_build_graph()   
-
-        if usecase == "AI News":
-            self.ai_news_builder_graph() 
-
-
-
         return self.graph_builder.compile()
-
-       
