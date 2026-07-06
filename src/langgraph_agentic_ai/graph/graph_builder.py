@@ -4,7 +4,7 @@ from langgraph.graph import StateGraph, END, START
 from src.langgraph_agentic_ai.state.state import State 
 from src.langgraph_agentic_ai.nodes.basic_chatbot_node import BasicChatbotNode
 from src.langgraph_agentic_ai.tools.chatbot_with_Tool_node import ChatbotWithToolNode
-
+from src.langgraph_agentic_ai.nodes.ai_news_node import AINewsNode
 
 class GraphBuilder:
 
@@ -58,6 +58,31 @@ class GraphBuilder:
         self.graph_builder.add_edge("tools", "chatbot")
         self.graph_builder.add_edge("tools",END)
         
+    # -----------------------------------------------
+    def ai_news_builder_graph(self):
+        
+
+        ai_news_node = AINewsNode(self.llm) # we are creating obj of the class AINewsNode 
+
+        # create node
+        self.graph_builder.add_node("fetch_news" , ai_news_node.fetch_news)
+        self.graph_builder.add_node("summarize_news", ai_news_node.summarize_news)
+        self.graph_builder.add_node("save_results", ai_news_node.save_result)
+
+
+        # add edges
+        
+        # self.graph_builder.add_edge(START, "fetch_news")
+        self.graph_builder.set_entry_point("fetch_news")
+
+        self.graph_builder.add_edge("fetch_news", "summarize_news")
+        self.graph_builder.add_edge("summarize_news", "save_results")
+        self.graph_builder.add_edge("save_results", END)
+
+        
+
+
+
 
 
 
@@ -72,6 +97,9 @@ class GraphBuilder:
 
         if usecase == "ChatBot with Web":
             self.chatbot_with_tools_build_graph()   
+
+        if usecase == "AI News":
+            self.ai_news_builder_graph() 
 
 
 

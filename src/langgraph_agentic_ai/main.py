@@ -20,7 +20,17 @@ def load_langgraph_agenticai_app():
         st.error("No input received from the user")
         return
     
-    user_message = st.chat_input("Enter your message")
+    # user_message = st.chat_input("Enter your message ...") -> when ai news is selected there is no input so this will not work so we are using session state 
+
+
+    if user_input.get("selected_usecase") == "AI News":
+        # Always pass the timeframe so the display logic knows which file to render.
+        # We will handle the IsFetchedButtonClicked state inside display_result.py
+        user_message = st.session_state.get("timeframe", "Daily")
+    else:
+        st.session_state.IsFetchedButtonClicked = False
+        user_message = st.chat_input("Enter your message                                         (*≧▽≦)ツ┏━┓")
+        
 
     if user_message:
         try:

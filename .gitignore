@@ -41,3 +41,16 @@ venv.bak/
 
 # OS
 .DS_Store
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Logs
+*.log
+
+# Dynamically generated app data
+AINews/
+
+# Scratch/Note files
+learn.md
+mistake.md

@@ -43,7 +43,26 @@ class DisplayResultStreamlit:
                     with st.chat_message("assistant"):
                         # in green color means should look different on screen
                         st.write(message.content)
+
+        elif usecase == 'AI News':
+            frequency = self.user_message.lower()
+
+            # Only invoke the graph if the fetch button was actually clicked
+            if st.session_state.get("IsFetchedButtonClicked", False):
+                with st.spinner(f"Fetching and summarizing {frequency} news......"):
+                    result = graph.invoke({"messages" : frequency})
+                # Reset the button state so it doesn't re-fetch on every UI interaction
+                st.session_state.IsFetchedButtonClicked = False
+                
+            try:
+                # Always try to read and display the markdown file
+                AI_NEWS_PATH = f"./AINews/{frequency}_summary.md"
+                with open(AI_NEWS_PATH, 'r') as f:
+                    markdown_content = f.read()
+
+                st.markdown(markdown_content, unsafe_allow_html=True)
+            except FileNotFoundError:
+                st.info(f"No summary found for {frequency.capitalize()}. Click 'Fetch Latest AI News' to generate one.")
             
         else:
             st.error(f"Error: Invalid use case '{usecase}'.")
-        
