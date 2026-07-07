@@ -72,17 +72,20 @@ class LoadStreamlitUI:
             self.user_controls["selected_llm"] = st.selectbox("LLM Provider" , options=llm_options)
 
             if self.user_controls["selected_llm"] == "Groq":
-                model_options = self.config.get_groq_model_options()
+                groq_key = st.text_input("🔑 1. Groq API Key", type="password", key="GROQ_API_KEY")
+                self.user_controls["GROQ_API_KEY"] = groq_key
 
-                self.user_controls["selected_groq_model"] = st.selectbox("Groq Model" , options=model_options)
-                self.user_controls["GROQ_API_KEY"] = st.session_state["GROQ_API_KEY"] = st.text_input("Groq API Key", type="password")
-
-                if not self.user_controls["GROQ_API_KEY"]:
+                if not groq_key:
                     st.warning("Please enter your GROQ API key to proceed.")
                 
-            os.environ["TAVILY_API_KEY"] = self.user_controls["TAVILY_API_KEY"] = st.session_state["TAVILY_API_KEY"] = st.text_input("TAVILY API Key (Required for Web/News)", type="password")
+                model_options = self.config.get_groq_model_options()
+                self.user_controls["selected_groq_model"] = st.selectbox("🧠 2. Select Groq Model (e.g. llama3)" , options=model_options)
+                
+            tavily_key = st.text_input("🌐 3. TAVILY API Key (Web Search)", type="password", key="TAVILY_API_KEY")
+            os.environ["TAVILY_API_KEY"] = tavily_key
+            self.user_controls["TAVILY_API_KEY"] = tavily_key
 
-            if not self.user_controls["TAVILY_API_KEY"]:
+            if not tavily_key:
                 st.warning("Please enter your TAVILY API key for full functionality.")
 
         return self.user_controls

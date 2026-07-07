@@ -134,6 +134,7 @@ class AINewsNode:
         self.state['summary'] = state['summary']
         return self.state
 
+
     # can work on this method more
     def save_result(self, state):
         print("\n--- [NODE: AI News - Save Result] Executing ---")

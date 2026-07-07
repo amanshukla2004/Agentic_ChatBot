@@ -17,13 +17,14 @@ def route_decision(state: State) -> str:
     else:
         return "basic_chatbot"
 
+
 class GraphBuilder:
 
     def __init__(self, model):
         self.llm = model
         self.graph_builder = StateGraph(State)
     
-    def setup_graph(self, usecase=None):
+    def setup_graph(self, usecase=None, checkpointer=None):
         """
         Sets up the unified multi-agent graph. The usecase argument is kept for backwards compatibility but is no longer required.
         """
@@ -70,7 +71,11 @@ class GraphBuilder:
         self.graph_builder.add_edge("basic_chatbot", END)
         
         # Chatbot with Tools (Web Search) flow
-        self.graph_builder.add_conditional_edges("chatbot_with_tools", tools_condition)
+        self.graph_builder.add_conditional_edges(
+            "chatbot_with_tools", 
+            tools_condition,
+            {"tools": "tools", "__end__": END}
+        )
         self.graph_builder.add_edge("tools", "chatbot_with_tools")
         
         # AI News flow
@@ -78,4 +83,6 @@ class GraphBuilder:
         self.graph_builder.add_edge("summarize_news", "save_results")
         self.graph_builder.add_edge("save_results", END)
 
+        if checkpointer:
+            return self.graph_builder.compile(checkpointer=checkpointer)
         return self.graph_builder.compile()

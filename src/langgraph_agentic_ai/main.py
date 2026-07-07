@@ -55,6 +55,10 @@ def load_langgraph_agenticai_app():
         st.error("UI failed to load properly.")
         return
         
+    if not user_input.get("GROQ_API_KEY") or not user_input.get("TAVILY_API_KEY"):
+        st.info("👋 Welcome to Agentic AI Workflow! Please enter your **GROQ API Key** and **TAVILY API Key** in the sidebar to get started.")
+        return
+        
     # --- STATE INITIALIZATION ---
     if "messages" not in st.session_state:
         st.session_state.messages = []
@@ -62,20 +66,50 @@ def load_langgraph_agenticai_app():
         st.session_state.last_tool_used = "basic_chat"
     if "news_summary" not in st.session_state:
         st.session_state.news_summary = None
+        
+    # --- HITL CHECKPOINTER ---
+    from langgraph.checkpoint.memory import MemorySaver
+    import uuid
+    if "checkpointer" not in st.session_state:
+        st.session_state.checkpointer = MemorySaver()
+    if "thread_id" not in st.session_state:
+        st.session_state.thread_id = str(uuid.uuid4())
     # --- SIDEBAR COMPONENTS ---
     with st.sidebar:
         st.write("---")
         
-        # We reserve an empty container for the visualizer to hook into during active generation
-        st.markdown("#### 🧭 Visualize Workflow")
-        visualizer_container = st.empty()
-        
         # If there are cached workflow steps from the last execution, render them persistently
         if "workflow_steps" in st.session_state and st.session_state.workflow_steps:
-            with visualizer_container.container():
-                with st.status("Agent Workflow Steps (Completed)", expanded=False):
-                    for step in st.session_state.workflow_steps:
-                        st.write(f"✅ **Executed Node:** `{step}`")
+            with st.expander("Agent Workflow Steps (Completed)", expanded=False):
+                for step in st.session_state.workflow_steps:
+                    st.write(f"✅ **Executed Node:** `{step}`")
+        
+        st.write("---")
+        
+        # --- NEW: Sidebar Tabs for 'Under the Hood' ---
+        st.markdown("#### 🧠 Agent Diagnostics")
+        tab_mermaid, tab_state, tab_timeline = st.tabs(["Graph", "State", "Timeline"])
+        
+        with tab_mermaid:
+            mermaid_container = st.empty()
+            if "final_mermaid" in st.session_state:
+                with mermaid_container:
+                    from src.langgraph_agentic_ai.ui.streamlitui.visualizer import render_live_mermaid
+                    render_live_mermaid(st.session_state.final_mermaid, active_node=None, completed_nodes=st.session_state.get("workflow_steps", []))
+                    
+        with tab_state:
+            state_container = st.empty()
+            if "final_state" in st.session_state:
+                with state_container:
+                    from src.langgraph_agentic_ai.ui.streamlitui.visualizer import render_state_inspector
+                    render_state_inspector(st.session_state.final_state)
+                    
+        with tab_timeline:
+            timeline_container = st.empty()
+            if "final_timeline" in st.session_state:
+                with timeline_container:
+                    from src.langgraph_agentic_ai.ui.streamlitui.visualizer import render_timeline
+                    render_timeline(st.session_state.final_timeline)
         
         st.write("---")
         
@@ -138,6 +172,19 @@ def load_langgraph_agenticai_app():
     if st.session_state.news_summary:
         st.markdown(f'<div class="news-card">{st.session_state.news_summary}</div>', unsafe_allow_html=True)
 
+    # --- INITIALIZE GRAPH EARLY TO CHECK FOR INTERRUPTS ---
+    obj_llm_configure = GroqLLM(user_controls_input = user_input)
+    model = obj_llm_configure.get_llm_model()
+    if not model:
+        st.error("LLM configuration failed.")
+        return
+        
+    graph_builder_instance = GraphBuilder(model)
+    graph = graph_builder_instance.setup_graph(checkpointer=st.session_state.checkpointer)
+    config = {"configurable": {"thread_id": st.session_state.thread_id}}
+    
+    config = {"configurable": {"thread_id": st.session_state.thread_id}}
+
     # --- CHAT INPUT & EXECUTION ---
     user_message = st.chat_input("Ask a question, request web search, or ask for AI News...")
     
@@ -153,28 +200,24 @@ def load_langgraph_agenticai_app():
     if st.session_state.messages and st.session_state.messages[-1]["role"] == "user":
         latest_user_msg = st.session_state.messages[-1]["content"]
         try:
-            # configure llm
-            obj_llm_configure = GroqLLM(user_controls_input = user_input)
-            model = obj_llm_configure.get_llm_model()
-
-            if not model:
-                st.error("LLM configuration failed.")
-                return
+            # We can determine if it's news based on exact match or let router handle it
+            usecase = "news" if latest_user_msg.lower().strip() == "give me the latest ai news" else None
+            # Re-setup graph with specific usecase entry point if needed
+            new_graph_builder_instance = GraphBuilder(model)
+            graph = new_graph_builder_instance.setup_graph(usecase=usecase, checkpointer=st.session_state.checkpointer)
             
-            # initialise and set up the unified graph
-            graph_builder_instance = GraphBuilder(model)
-            try:
-                # We can determine if it's news based on exact match or let router handle it
-                usecase = "news" if latest_user_msg.lower().strip() == "give me the latest ai news" else None
-                graph = graph_builder_instance.setup_graph(usecase=usecase)
-                
-                # Pass the visualizer container to display_result so it renders in col2 above the panels!
-                DisplayResultStreamlit(graph, latest_user_msg, visualizer_container).display_result_on_ui()
-                
-                # After graph finishes, rerun to flush states and lock UI
-                st.rerun()
+            # Setup real-time feedback UI
+            with st.chat_message("assistant"):
+                with st.spinner("🧠 Agent is analyzing and routing your request..."):
+                    stream_container = st.empty()
+                    
+            # Pass the visualizer containers and stream container to display_result
+            DisplayResultStreamlit(graph, latest_user_msg, st.session_state.thread_id, mermaid_container, state_container, timeline_container, stream_container).display_result_on_ui()
+            
+            # After graph finishes, rerun to flush states and lock UI
+            st.rerun()
 
-            except Exception as e:
+        except Exception as e:
                 import traceback
                 traceback.print_exc()
                 st.error(f"Error: Failed to setup the graph. {e}")

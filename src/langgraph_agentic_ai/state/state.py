@@ -12,6 +12,7 @@ class State(TypedDict):
     retrieved_context: Any
     final_response: Any
     error: str
+    tool_approved: bool
     
     # AI News specific state keys
     frequency: str

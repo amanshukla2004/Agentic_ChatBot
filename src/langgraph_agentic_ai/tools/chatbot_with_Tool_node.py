@@ -41,10 +41,24 @@ class ChatbotWithToolNode:
             
             # Inject system message if not present
             if not messages or not isinstance(messages[0], SystemMessage):
-                sys_msg = SystemMessage(content=f"You are a helpful assistant. Today's date is {current_date}. You have access to a web search tool. You MUST use the search tool if the user asks for real-time information, news, weather, or current events. Do not rely on your training data for current events. ALWAYS use the standard tool calling API to invoke tools. NEVER use <function=...> XML tags to call tools. IMPORTANT: If a tool returns image markdown, URLs, or thumbnails, you MUST pass them through to your final response exactly as provided. Do not hallucinate [Channel Name] or fake video titles.")
+                sys_msg = SystemMessage(content=f"You are a helpful assistant. Today's date is {current_date}. You have access to tools. If you have already called a tool and received the results, DO NOT call the exact same tool again. Synthesize the final answer immediately based on the tool results. ALWAYS use the standard tool calling API to invoke tools. NEVER use <function=...> XML tags to call tools. IMPORTANT: Do not include raw image markdown, thumbnails, or raw URLs from tool outputs in your final response, as the UI will render them automatically. Just summarize the findings.")
                 messages = [sys_msg] + messages
                 
-            response = llm_with_tools.invoke(messages)
+            # Prevent infinite tool loops: if the last action was a tool execution, force a text response by unbinding tools.
+            from langchain_core.messages import ToolMessage, AIMessage
+            
+            last_was_tool = False
+            for msg in reversed(messages):
+                if isinstance(msg, AIMessage):
+                    break
+                if isinstance(msg, ToolMessage):
+                    last_was_tool = True
+                    break
+                    
+            if last_was_tool:
+                response = self.llm.invoke(messages)
+            else:
+                response = llm_with_tools.invoke(messages)
             
             # --- FALLBACK: Parse XML Tool Calls ---
             # Smaller models like llama-3.1-8b sometimes hallucinate XML tool calls instead of using the API natively.
@@ -57,11 +71,12 @@ class ChatbotWithToolNode:
                 if match:
                     tool_name = match.group(1)
                     try:
+                        import uuid
                         args = json.loads(match.group(2))
-                        # Replace the response with a correctly formatted tool call message
+                        # Replace the response with a correctly formatted tool call message, keeping any other text
                         response = AIMessage(
-                            content="",
-                            tool_calls=[{"name": tool_name, "args": args, "id": "call_" + tool_name}]
+                            content=response.content.replace(match.group(0), ""),
+                            tool_calls=[{"name": tool_name, "args": args, "id": "call_" + str(uuid.uuid4().hex[:8])}]
                         )
                         print(f"Fallback parser activated! Converted XML to tool call: {tool_name}")
                     except Exception as e:
