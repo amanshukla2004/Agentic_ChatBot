@@ -9,7 +9,7 @@
 [![Groq](https://img.shields.io/badge/Groq-F55036?style=for-the-badge&logo=lightning&logoColor=white)](https://groq.com)
 [![License](https://img.shields.io/badge/License-MIT-000000?style=for-the-badge)](https://opensource.org/licenses/MIT)
  
-
+</div>
  
 ## ✨ Why Graphite AI?
  
