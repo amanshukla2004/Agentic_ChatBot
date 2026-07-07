@@ -76,6 +76,18 @@ def load_langgraph_agenticai_app():
         st.session_state.thread_id = str(uuid.uuid4())
     # --- SIDEBAR COMPONENTS ---
     with st.sidebar:
+        if st.button("➕ New Chat", use_container_width=True, type="primary"):
+            st.session_state.messages = []
+            st.session_state.thread_id = str(uuid.uuid4())
+            st.session_state.workflow_steps = []
+            st.session_state.last_tool_used = "basic_chat"
+            st.session_state.news_summary = None
+            # Clear diagnostic UI states
+            for key in ["final_mermaid", "final_state", "final_timeline"]:
+                if key in st.session_state:
+                    del st.session_state[key]
+            st.rerun()
+            
         st.write("---")
         
         # If there are cached workflow steps from the last execution, render them persistently
@@ -149,15 +161,48 @@ def load_langgraph_agenticai_app():
     if not st.session_state.messages:
             st.markdown(
                 """
-                <div style="text-align: center; margin-top: 40px; margin-bottom: 40px; color: #9CA3AF;">
+                <div style="text-align: center; margin-top: 40px; margin-bottom: 20px; color: #9CA3AF;">
                     <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f916/512.gif" alt="🤖" width="80" height="80" style="margin-bottom: 10px;">
-                    <h1 style="color: #E5E7EB; font-weight: 700; font-size: 2.5rem; letter-spacing: -0.025em; margin-bottom: 10px;">Agentic AI Workflow</h1>
-                    <p style="font-size: 1.1rem; max-width: 600px; margin: 0 auto; line-height: 1.5;">I am a stateful, intelligent routing agent equipped with multiple tools and dynamic workflows.</p>
+                    <h1 style="color: #E5E7EB; font-weight: 700; font-size: 3rem; letter-spacing: -0.025em; margin-bottom: 5px;">Graphite AI</h1>
+                    <p style="font-size: 1.2rem; color: #D1D5DB; margin-bottom: 15px;">One agent. Multiple tools. Dynamic workflows.</p>
+                    <div style="font-size: 0.95rem; font-weight: 500; color: #9CA3AF; display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; margin-bottom: 30px;">
+                        <span>🎥 YouTube</span>
+                        <span>☁️ Weather</span>
+                        <span>📰 News</span>
+                        <span>🔎 Web Search</span>
+                        <span>🧠 Human-in-the-loop</span>
+                    </div>
                 </div>
                 """, 
                 unsafe_allow_html=True
             )
-            st.caption("💡 Hint: Try asking *'Find a YouTube video on LangGraph'*, *'Check the weather in Paris'*, or *'Give me the latest AI news'*.")
+            
+            # Suggestion Chips (Buttons)
+            st.write("") # Spacing
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                if st.button("🎥 Find a YT video", use_container_width=True):
+                    st.session_state.chat_input_key = "Search a YouTube video on the topic - "
+                    st.rerun()
+            with col2:
+                if st.button("☁️ Check weather", use_container_width=True):
+                    st.session_state.chat_input_key = "Check the weather in - "
+                    st.rerun()
+            with col3:
+                if st.button("📰 Latest AI news", use_container_width=True):
+                    st.session_state.chat_input_key = "Give me the latest AI news about - "
+                    st.rerun()
+                    
+            # Footer Microcopy
+            st.markdown(
+                """
+                <div style="text-align: center; margin-top: 40px; font-size: 0.85rem; color: #6B7280;">
+                    Built with LangGraph · Streamlit · Groq · Tavily
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
     
     # Render persistent chat history
     for msg in st.session_state.messages:
@@ -186,7 +231,7 @@ def load_langgraph_agenticai_app():
     config = {"configurable": {"thread_id": st.session_state.thread_id}}
 
     # --- CHAT INPUT & EXECUTION ---
-    user_message = st.chat_input("Ask a question, request web search, or ask for AI News...")
+    user_message = st.chat_input("Ask a question, request web search, or ask for AI News...", key="chat_input_key")
     
     if user_message:
         # Immediately display user message in the UI before processing
