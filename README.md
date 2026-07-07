@@ -41,9 +41,9 @@ Graphite AI runs on a directed graph — every request moves through a router no
  
 ```mermaid
 graph TD
-    classDef router fill:#f9f,stroke:#333,stroke-width:4px;
-    classDef tool fill:#bbf,stroke:#333,stroke-width:2px;
-    classDef llm fill:#bfb,stroke:#333,stroke-width:2px;
+    classDef router fill:#f9f,stroke:#333,stroke-width:4px,color:#000;
+    classDef tool fill:#bbf,stroke:#333,stroke-width:2px,color:#000;
+    classDef llm fill:#bfb,stroke:#333,stroke-width:2px,color:#000;
  
     User(["👤 User Input"]) --> Router{"Router Node"}:::router
  
@@ -73,10 +73,10 @@ When a prompt needs live knowledge the model wasn't trained on, the router silen
  
 ```mermaid
 graph LR
-    classDef user fill:#e1bee7,stroke:#4a148c,stroke-width:2px;
-    classDef router fill:#ffcc80,stroke:#e65100,stroke-width:3px;
-    classDef tool fill:#bbdefb,stroke:#0d47a1,stroke-width:2px;
-    classDef llm fill:#c8e6c9,stroke:#1b5e20,stroke-width:2px;
+    classDef user fill:#e1bee7,stroke:#4a148c,stroke-width:2px,color:#000;
+    classDef router fill:#ffcc80,stroke:#e65100,stroke-width:3px,color:#000;
+    classDef tool fill:#bbdefb,stroke:#0d47a1,stroke-width:2px,color:#000;
+    classDef llm fill:#c8e6c9,stroke:#1b5e20,stroke-width:2px,color:#000;
  
     U(["👤 User"]):::user -->|"Who won the game?"| R{"Router"}:::router
     R -->|"Requires live data"| T["🔎 Tavily API"]:::tool
@@ -91,11 +91,11 @@ A dedicated multi-step pipeline: search → summarize → cache → render, so r
  
 ```mermaid
 graph LR
-    classDef trigger fill:#ffcdd2,stroke:#b71c1c,stroke-width:2px;
-    classDef tool fill:#bbdefb,stroke:#0d47a1,stroke-width:2px;
-    classDef llm fill:#c8e6c9,stroke:#1b5e20,stroke-width:2px;
-    classDef file fill:#cfd8dc,stroke:#263238,stroke-width:2px;
-    classDef ui fill:#ffe082,stroke:#ff6f00,stroke-width:2px;
+    classDef trigger fill:#ffcdd2,stroke:#b71c1c,stroke-width:2px,color:#000;
+    classDef tool fill:#bbdefb,stroke:#0d47a1,stroke-width:2px,color:#000;
+    classDef llm fill:#c8e6c9,stroke:#1b5e20,stroke-width:2px,color:#000;
+    classDef file fill:#cfd8dc,stroke:#263238,stroke-width:2px,color:#000;
+    classDef ui fill:#ffe082,stroke:#ff6f00,stroke-width:2px,color:#000;
  
     A(["🖱️ Click 'Fetch News'"]):::trigger --> B["📰 News Node"]:::tool
     B --> C["🔎 Tavily Search"]:::tool
@@ -108,10 +108,10 @@ graph LR
  
 ```mermaid
 graph LR
-    classDef user fill:#e1bee7,stroke:#4a148c,stroke-width:2px;
-    classDef router fill:#ffcc80,stroke:#e65100,stroke-width:3px;
-    classDef tool fill:#bbdefb,stroke:#0d47a1,stroke-width:2px;
-    classDef state fill:#d7ccc8,stroke:#3e2723,stroke-width:2px;
+    classDef user fill:#e1bee7,stroke:#4a148c,stroke-width:2px,color:#000;
+    classDef router fill:#ffcc80,stroke:#e65100,stroke-width:3px,color:#000;
+    classDef tool fill:#bbdefb,stroke:#0d47a1,stroke-width:2px,color:#000;
+    classDef state fill:#d7ccc8,stroke:#3e2723,stroke-width:2px,color:#000;
  
     U(["👤 'Find a video on LangGraph'"]):::user --> R{"Router"}:::router
     R -->|"Video Intent"| Y["🎥 YouTube Tool"]:::tool
@@ -168,19 +168,16 @@ streamlit run app.py
  
 ## 📁 Project Structure
  
-```
+```text
 Agentic_ChatBot/
-├── app.py                 # Streamlit entry point
-├── graph/
-│   ├── nodes.py           # LangGraph node definitions
-│   └── state.py           # Agent state schema
-├── tools/
-│   ├── youtube_tool.py
-│   ├── weather_tool.py
-│   └── news_tool.py
-├── docs/
-│   └── demo.gif
-└── requirements.txt
+├── app.py                     # Streamlit entry point
+├── requirements.txt           # Project dependencies
+└── src/
+    └── langgraph_agentic_ai/
+        ├── graph/             # LangGraph nodes & state schema
+        ├── tools/             # YouTube, Weather, and News integrations
+        ├── LLMS/              # Groq model configurations
+        └── ui/                # Streamlit UI & Visualizer components
 ```
  
 ---
