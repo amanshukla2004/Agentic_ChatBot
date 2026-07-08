@@ -133,6 +133,7 @@ def load_langgraph_agenticai_app():
             - 🌐 **Web Search:** Real-time web info (Tavily)
             - 🎥 **YouTube Search:** Find video tutorials
             - 📰 **AI News:** Curated industry updates
+            - 📚 **Wikipedia:** Encyclopedia knowledge
             """
         )
         
@@ -170,6 +171,7 @@ def load_langgraph_agenticai_app():
                         <span>☁️ Weather</span>
                         <span>📰 News</span>
                         <span>🔎 Web Search</span>
+                        <span>📚 Wikipedia</span>
                         <span>🧠 Human-in-the-loop</span>
                     </div>
                 </div>

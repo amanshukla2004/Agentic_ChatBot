@@ -73,6 +73,7 @@ class LoadStreamlitUI:
 
             if self.user_controls["selected_llm"] == "Groq":
                 groq_key = st.text_input("🔑 1. Groq API Key", type="password", key="GROQ_API_KEY")
+                st.caption("Get your free Groq API key [here](https://console.groq.com/keys).")
                 self.user_controls["GROQ_API_KEY"] = groq_key
 
                 if not groq_key:
@@ -82,6 +83,7 @@ class LoadStreamlitUI:
                 self.user_controls["selected_groq_model"] = st.selectbox("🧠 2. Select Groq Model (e.g. llama3)" , options=model_options)
                 
             tavily_key = st.text_input("🌐 3. TAVILY API Key (Web Search)", type="password", key="TAVILY_API_KEY")
+            st.caption("Get your free Tavily API key [here](https://app.tavily.com/home).")
             os.environ["TAVILY_API_KEY"] = tavily_key
             self.user_controls["TAVILY_API_KEY"] = tavily_key
 
