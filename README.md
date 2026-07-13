@@ -1,5 +1,7 @@
-<div align="center">
 # 🤖 Graphite AI
+
+<div align="center">
+
  
 ### *A multi-tool agent that reasons, routes, and remembers.*
  
